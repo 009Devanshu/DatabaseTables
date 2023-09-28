@@ -1,0 +1,203 @@
+create table employee
+(
+	EmpId int primary key identity(1,1),
+	EmpName nvarchar(200),
+	Designation nvarchar(200),
+	DateOfJoining DateTime,
+	EmpCode nvarchar(200) unique not null,
+	Pan nvarchar(200),
+	EmpAddress nvarchar(200),
+	Remote bit,
+)
+----------------------------------------------------------------------------
+drop table details
+
+CREATE TABLE details
+(
+    DetailsId int primary key identity(1,1),
+    EmpBasic float,
+    EmpHra float,
+    EmpTA float,
+    OtherAllowance float,
+    MedicalAllowance float,
+    RemoteWorkAllowance float,
+    Bonus float,
+    PF float,
+    ESIC float,
+    Loan float,
+    Advance float,
+    Other float,
+    TDS float,
+    TotalCTC float,
+    TotalEarnings float,
+    TotalDeductions float,
+    NetPayable float,
+    EmpId int,
+    foreign key (EmpId) references employee(EmpId)
+);
+
+-------------------------------------------------------------------------------------
+CREATE PROCEDURE InsertDetails
+    @EmpBasic float,
+    @EmpHra float,
+    @EmpTA float,
+    @OtherAllowance float,
+    @MedicalAllowance float,
+    @RemoteWorkAllowance float,
+    @Bonus float,
+    @PF float,
+    @ESIC float,
+    @Loan float,
+    @Advance float,
+    @Other float,
+    @TDS float,
+    @TotalCTC float,
+    @TotalEarnings float,
+    @TotalDeductions float,
+    @NetPayable float,
+    @EmpName NVARCHAR(200),
+    @Designation NVARCHAR(200),
+    @DateOfJoining DATETIME,
+    @EmpCode NVARCHAR(200),
+    @Pan NVARCHAR(200),
+    @EmpAddress NVARCHAR(200),
+	@Remote bit
+AS
+BEGIN
+    DECLARE @EmpId INT;
+
+    -- Insert data into the employee table
+    INSERT INTO employee (EmpName, Designation, DateOfJoining, EmpCode, Pan, EmpAddress,Remote)
+    VALUES (@EmpName, @Designation, @DateOfJoining, @EmpCode, @Pan, @EmpAddress,@Remote);
+
+    -- Get the automatically generated EmpId
+    SET @EmpId = SCOPE_IDENTITY();
+
+    -- Insert data into the details table
+    INSERT INTO details (EmpBasic, EmpHra, EmpTA, OtherAllowance, MedicalAllowance, RemoteWorkAllowance, Bonus, PF, ESIC,  Loan, Advance, Other, TDS,TotalCTC,TotalEarnings,TotalDeductions,NetPayable, EmpId)
+    VALUES (@EmpBasic, @EmpHra, @EmpTA, @OtherAllowance, @MedicalAllowance, @RemoteWorkAllowance, @Bonus, @PF, @ESIC, @Loan, @Advance, @Other, @TDS,@TotalCTC, @TotalEarnings, @TotalDeductions, @NetPayable , @EmpId);
+END;
+---------------------------------------------------------------------------------
+create proc LoadEmp_DB
+@EmpCode nvarchar(200),
+@EmpName nvarchar(200)
+as 
+begin
+SELECT *
+FROM employee e
+INNER JOIN details d ON e.EmpId = d.EmpId
+where e.EmpCode=@EmpCode AND e.EmpName=@EmpName
+end;
+
+---------------------------------------------------------------------------------
+
+create proc LoadAllEmp
+as 
+begin
+ select e.EmpName,e.EmpCode,e.Designation,e.DateOfJoining,e.Pan,e.EmpAddress,e.Remote,d.TotalCTC,d.EmpBasic,d.EmpHra,d.EmpTA,
+ d.OtherAllowance,d.MedicalAllowance,d.RemoteWorkAllowance,d.Bonus,d.PF,d.ESIC,d.Loan,d.Advance,d.Other,d.TDS,d.TotalEarnings,d.TotalDeductions,d.NetPayable
+ from employee e Inner Join details d
+ on e.EmpId = d.EmpId;
+end;
+
+exec LoadAllEmp 
+---------------------------------------------------------------------------------
+
+CREATE PROCEDURE DeleteEmployeeAndDetailsByCodeAndName
+    @target_emp_code NVARCHAR(200),
+    @target_emp_name NVARCHAR(200)
+AS
+BEGIN
+    -- Start a transaction to ensure data consistency
+    BEGIN TRANSACTION;
+
+    -- Delete the corresponding row from the Details table first
+    DELETE FROM details WHERE EmpId IN (SELECT EmpId FROM Employee WHERE EmpCode = @target_emp_code AND EmpName = @target_emp_name);
+
+    -- Delete the row from the Employee table
+    DELETE FROM employee WHERE EmpCode = @target_emp_code AND EmpName = @target_emp_name;
+
+    -- Commit the transaction
+    COMMIT;
+END;
+
+exec DeleteEmployeeAndDetailsByCodeAndName @target_emp_code='EMP002', @target_emp_name='David';
+---------------------------------------------------------------------------------------
+
+CREATE PROCEDURE DeleteEmp_Data
+@EmpCode NVARCHAR(200)
+AS
+BEGIN
+    DELETE FROM employee
+    WHERE EmpId IN (
+        SELECT employee.EmpId
+        FROM employee
+        INNER JOIN details ON details.EmpId = employee.EmpId
+        WHERE employee.EmpCode = @EmpCode
+    );
+END;
+---------------------------------------------------------------------------------------
+ALTER TABLE details
+ADD CONSTRAINT FK_details_EmpId
+FOREIGN KEY (EmpId)
+REFERENCES employee(EmpId)
+ON DELETE CASCADE;
+
+exec DeleteEmp_Data 'EMP003'
+
+-------------------------------------------------------------------------------------
+
+
+CREATE PROCEDURE UpdateEmp_Data
+    @EmpDesignation NVARCHAR(200),
+    @EmpBasic FLOAT,
+    @EmpHra FLOAT,
+    @EmpTA FLOAT,
+    @OtherAllowance FLOAT,
+    @MedicalAllowance FLOAT,
+    @RemoteWorkAllowance FLOAT,
+    @Bonus FLOAT,
+    @PF FLOAT,
+    @ESIC FLOAT,
+    @Loan FLOAT,
+    @Advance FLOAT,
+    @Other FLOAT,
+    @TDS FLOAT,
+    @TotalCTC FLOAT,
+	@TotalEarnings float,
+	@TotalDeductions float,
+	@NetPayable float,
+	@Remote bit,
+    @EmpCode NVARCHAR(200)
+AS
+BEGIN
+    UPDATE details
+    SET EmpBasic = @EmpBasic,
+        EmpHra = @EmpHra,
+        EmpTA = @EmpTA,
+        OtherAllowance = @OtherAllowance,
+        MedicalAllowance = @MedicalAllowance,
+        RemoteWorkAllowance = @RemoteWorkAllowance,
+        Bonus = @Bonus,
+        PF = @PF,
+        ESIC = @ESIC,
+        Loan = @Loan,
+        Advance = @Advance,
+        Other = @Other,
+        TDS = @TDS,
+        TotalCTC = @TotalCTC,
+		TotalEarnings=@TotalEarnings,
+		TotalDeductions=@TotalDeductions,
+		NetPayable=@NetPayable,
+		Remote=@Remote
+    FROM details
+    INNER JOIN employee ON details.EmpId = employee.EmpId
+    WHERE employee.EmpCode = @EmpCode;
+
+    -- Now, update the designation in the employee table
+    UPDATE employee
+    SET Designation = @EmpDesignation
+    WHERE EmpCode = @EmpCode;
+END;
+
+------------------------------------------------------------------------------------------
